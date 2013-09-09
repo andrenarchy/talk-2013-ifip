@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+
+<!--
+Google IO 2012 HTML5 Slide Template
+
+Authors: Eric Bidelman <ebidel@gmail.com>
+         Luke Mahé <lukem@google.com>
+
+URL: https://code.google.com/p/io-2012-slides
+-->
+
+<html>
+  <head>
+    <title>Deflated Krylov subspace methods for nonlinear Schrödinger problems</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <!--<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">-->
+    <!--<meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+    <!--This one seems to work all the time, but really small on ipad-->
+    <!--<meta name="viewport" content="initial-scale=0.4">-->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" media="all" href="theme/css/default.css">
+    <link rel="stylesheet" media="only screen and (max-device-width: 480px)" href="theme/css/phone.css">
+    <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->
+    <link rel="stylesheet" media="all" href="theme/css/jsxgraph.css">
+    <script type="text/javascript" src="js/jsxgraphcore.js"></script>
+    <script data-main="js/slides" src="js/require-1.0.8.min.js"></script>
+    <!--MathJax-->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: {
+          equationNumbers: {
+            autoNumber: 'AMS'
+          },
+          Macros: {
+            x: '\\mathbf{x}',
+            C: '\\mathbb{C}',
+            R: '\\mathbb{R}',
+            A: '\\mathbf{A}',
+            n: '\\mathbf{n}',
+            i: '\\text{i}',
+            id: '\\mathsf{id}',
+            vsH: '\\mathcal{H}',
+            vsL: '\\mathcal{L}',
+            vsK: '\\mathcal{K}',
+            vsN: '\\mathcal{N}',
+            vsR: '\\mathcal{R}',
+            vsV: '\\mathcal{V}',
+            vsW: '\\mathcal{W}',
+            vsX: '\\mathcal{X}',
+            vsY: '\\mathcal{Y}',
+            diag: '\\operatorname{diag}',
+            Im: '\\operatorname{Im}',
+            Re: '\\operatorname{Re}',
+            Span: '\\operatorname{span}',
+            ip: ['\\langle #1,#2 \\rangle', 2],
+            ipdots: '\\ip{\\cdot}{\\cdot}',
+            nrm: ['\\| #1 \\|', 1],
+            nrmdot: '\\nrm{\\cdot}',
+            lra: '\\longrightarrow',
+            LRA: '\\Longrightarrow',
+            LLRA: '\\Longleftrightarrow'
+          }
+        },
+        skipStartupTypeset: true
+      });
+    </script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script>
+      document.addEventListener('slideenter', function(e) {
+          MathJax.Hub.Queue(["Typeset", MathJax.Hub, e.target]);
+          var next = document.getElementsByClassName('next')[0];
+          if (next) {
+            MathJax.Hub.Queue(["Typeset", MathJax.Hub, next]);
+          }
+          var past = document.getElementsByClassName('past')[0];
+          if (past) {
+            MathJax.Hub.Queue(["Typeset", MathJax.Hub, past]);
+          }
+      });
+    </script>
+    <!--MathJax end-->
+  </head>
+
+  <body style="opacity: 0">
+
+    <slides>
+
+      <slide class="logoslide nobackground">
+        <article class="flexbox vcenter">
+          <span><img src="images/matheon-w-text.svg"></span>
+        </article>
+      </slide>
+
+      <slide class="title-slide segue nobackground">
+        <aside class="gdbar"><img src="images/matheon-logo-color.svg"></aside>
+        <!-- The content of this hgroup is replaced programmatically through the slide_config.json. -->
+        <hgroup class="auto-fadein">
+          <h1 data-config-title><!-- populated from slide_config.json --></h1>
+          <h2 data-config-subtitle><!-- populated from slide_config.json --></h2>
+          <p>
+            <h2 data-config-presenter><!-- populated from slide_config.json --></h2>
+          </p>
+        </hgroup>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Background: sequences of linear algebraic systems</h2>
+        </hgroup>
+        <article>
+          <p>
+            Sequences of linear algebraic systems
+            \[
+              A^{(k)} x^{(k)} = b^{(k)}
+            \]
+            with \(A^{(k)}\in\vsL(\C^N)\)
+            and \(x^{(k)},b^{(k)}\in\C^N\)
+            for \(k=1,2,\ldots\)
+            appear in a wide range of applications, for example
+            <ul>
+              <li>optimization loops,</li>
+              <li>parameter-dependent problems,</li>
+              <li>time stepping schemes for time-dependent PDEs,</li>
+              <li>Newton's method</li>
+            </ul>
+          </p>
+          <p>
+            \(A^{(k)}\) and \(A^{(k+1)}\) often have similar spectral
+            properties or are in fact equal.
+          </p>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Background: Krylov subspace methods</h2>
+        </hgroup>
+        <article>
+          <p>
+            For large \(N\) and sparse matrices:
+            <ul>
+              <li>
+                Krylov subspace methods with preconditioner
+                \(M^{(k)}\in\vsL(\C^N)\),
+                e.g. GMRES, MINRES or CG applied to
+                \[ M^{(k)}A^{(k)}x^{(k)}=M^{(k)}b^{(k)}. \]
+              </li>
+              <li>
+                Problem-specific preconditioners may limit the number of
+                iterations and the computation time, e.g. by using
+                (algebraic) multigrid for a part of the operator.
+              </li>
+              <li>
+                However, exploitation of similar spectral properties in a
+                sequence of linear systems difficult with conventional
+                preconditioners.
+              </li>
+            </ul>
+          </p>
+        </article>
+      </slide>
+
+      <!--slide>
+        <hgroup>
+          <h2>Background: convergence</h2>
+        </hgroup>
+        <article>
+          <p>
+            Let us consider a single preconditioned linear algebraic system
+            \[ MAx=Mb. \]
+            Characterization of approximates \(x_n\in x_0+\vsK_n(MA,Mr_0)\):
+            <ul>
+              <li>GMRES:
+                \[ \nrm{Mb-MAx_n} = \min_{p\in\Pi_0^n}\nrm{p(MA)Mr_0}. \]
+              </li>
+              <li>MINRES (\(M\) self-adjoint and positive definite):
+                \[ \nrm{Mb-MAx_n}_{M^{-1}} = \min_{p\in\Pi_0^n}\nrm{p(MA)Mr_0}_{M^{-1}}. \]
+              </li>
+              <li>CG (\(M\) self-adjoint and positive definite):
+                \[ \nrm{x-x_n}_A = \min_{p\in\Pi_0^n}\nrm{p(MA)(x-x_0)}_A. \]
+              </li>
+            </ul>
+          </p>
+        </article>
+      </slide-->
+
+      <slide>
+        <hgroup>
+          <h2>Background: convergence</h2>
+        </hgroup>
+        <article>
+          <p>
+            Let us consider the MINRES method for a single preconditioned linear algebraic system
+            \[ MAx=Mb, \]
+            with \(MA=UDU^*\), \(U\) unitary and \(D=\diag(\lambda_1,\ldots,\lambda_N)\).
+          </p>
+          <ul>
+            <li>
+              \begin{align*}
+                \nrm{Mb-MAx_n}_{M^{-1}}
+                &=
+                \min_{p\in\Pi_0^n} \nrm{p(D)U^*r_0}_2\\
+                &\leq
+                \nrm{r_0}_{M^{-1}}
+                \min_{p\in\Pi_0^n}
+                \max_{i\in\{1,\ldots,N\}}|p(\lambda_i)|
+              \end{align*}
+            <li>In some applications, the preconditioned operator \(MA\)
+              exhibits a small number of separated eigenvalues whose existance
+              slows down the convergence.</li>
+            <li>Discussion of this situation for MINRES in [SimS13].</li>
+          </ul>
+        </article>
+        <footer class="source">
+          <dl>
+            <dt>[SimS13]</dt>
+            <dd>
+              Simoncini and Szyld,
+              <em>On the Superlinear Convergence of MINRES.</em>
+              2013. In Num. Math. and Adv. Appl. 2011.
+            </dd>
+          </dl>
+        </footer>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Deflation</h2>
+        </hgroup>
+        <article>
+          <div class="box" data-title="Definition">
+            Let \(Z\in\C^{N,p}\) s.t. \(\ip{Z}{AZ}\) is invertible. Define
+            projection \(P_Z\in\vsL\) by
+            \[ P_Z x=x - AZ\ip{Z}{AZ}^{-1}\ip{Z}{x}. \]
+          </div>
+          <ul>
+            <li>
+              MINRES can be applied to the deflated system
+              \[ M P_Z A y = M P_Z b \]
+              with inner product \(\ipdots{}_{M^{-1}}\). The resulting
+              iterates \(y_n\) have to be corrected:
+              \( x_n:=P_Z^*y_n + Z\ip{Z}{AZ}^{-1}\ip{Z}{b} \).
+            </li>
+            <li>
+              If \(\Im(Z)\) is the \(MA\)-invariant subspace associated with
+              \(\lambda_1,\ldots,\lambda_p\):
+              \[
+                \nrm{Mb - MAx_n}_{M^{-1}}
+                \leq
+                \nrm{r_0}_{M^{-1}}
+                \min_{p\in\Pi_0^n}
+                \max_{i\in\{p+1,\ldots,N\}}|p(\lambda_i)|
+              \]
+            </li>
+          </ul>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Deflation in practice</h2>
+        </hgroup>
+        <article>
+          <p>
+            Where do the vectors come from?
+          </p>
+          <ul>
+            <li>Exact eigenvectors usually not available.</li>
+            <li>For sequences of linear systems: eigenvector approximations
+              (Ritz vectors) from the Krylov subspace built for the \(k\)-th
+              system can be used for the next linear system as deflation
+              vectors, see [WanSP07].
+            </li>
+            <li>Strategy was applied to restarted methods before
+              [ErhBP96, ChaS97, ...].</li>
+            <li>Eigenvector approximations may also be available from the
+              theory of the specific problem [GauS13].</li>
+          </ul>
+        </article>
+        <footer class="source">
+          <dl>
+            <dt>[WanSP07]</dt>
+            <dd>
+              Wang, de Sturler and Paulino,
+              <em>Large-scale topology optimization using preconditioned Krylov
+                subspace methods with recycling.</em>
+              2007. Internat. J. Numer. Methods Engrg.
+            </dd>
+            <dt>[ErhBP96]</dt>
+            <dd>
+              Erhel, Burrage and Pohl,
+              <em>Restarted GMRES preconditioned by deflation.</em>
+              1996. J. Comput. Appl. Math.
+            </dd>
+            <dt>[ChaS97]</dt>
+            <dd>
+              Chapman and Saad,
+              <em>Deflated and augmented Krylov subspace techniques.</em>
+              1997. Numer. Linear Algebra Appl.
+            </dd>
+            <dt>[GauS13]</dt>
+            <dd>
+              G. and Schlömer,
+              <em>Preconditioned recycling Krylov subspace methods for self-adjoint problems.</em>
+              2013 (under revision).
+            </dd>
+          </dl>
+        </footer>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Application: nonlinear Schrödinger problems</h2>
+        </hgroup>
+        <article>
+          <p>For an open domain \(\Omega\subseteq\R^2\) or
+            \(\Omega\subseteq\R^3\) a function \(\psi\in X\subseteq
+            H_{\C}^2(\Omega)\) is called a solution of the nonlinear
+            Schrödinger equation if
+            \[ S(\psi) := (K + V +g |\psi|^2)\psi = 0 \qquad\text{in}~\Omega\]
+            where
+            <ul>
+              <li>\(K:X\lra X\) is linear, self-adjoint and
+                positive-semidefinite w.r.t. the \(L^2(\Omega)\) inner
+                product,</li>
+              <li>\(V\in X\) is a scalar potential and</li>
+              <li>\(g\in\R\) is a coupling parameter.</li>
+            </ul>
+            Of course, one is interested in non-zero solutions \(\psi\neq 0\).
+          </p>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Application: nonlinear Schrödinger problems</h2>
+        </hgroup>
+        <article>
+          <h1>Newton's method</h1>
+          <p>
+            For "good-enough" initial guess \(\psi_0\), iterate for
+            \(k=0,1,2,\ldots\):
+            <ul>
+              <li>solve \( J(\psi_k)\delta_{k+1} = -S(\psi_k) \) with Jacobian
+                \( J(\psi): X\lra X\)
+                defined by
+                \[ J(\psi)\phi = (K + V + 2g|\psi|^2)\phi + g \psi^2
+                \overline{\phi} \]
+              </li>
+              <li>update \(\psi_{k+1} = \psi_k + \delta_{k+1} \)</li>
+            </ul>
+          </p>
+          <p>
+            <h1>⚠ Important ⚠ The Jacobian is</h1>
+            <ul>
+              <li>linear if \(X\) is defined as a vector space over
+                \(\R\).</li>
+              <li>self-adjoint but in general indefinite w.r.t. the inner product \(\ipdots{}_{\R}\)
+                defined by
+                \[ \ip{x}{y}_{\R} := \Re\ip{x}{y}_{L^2(\Omega)}. \]
+              </li>
+            </ul>
+          </p>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Application: nonlinear Schrödinger problems</h2>
+        </hgroup>
+        <article>
+          <p>For a nontrivial solution \(\psi\)
+            \[ J(\psi)(\i\psi) = \i S(\psi) = 0 \]
+            and thus the Jacobian \(J(\psi)\)
+            is singular.</p>
+          <div class="box box-warn" data-title="Observation">
+            While \(\psi_k\) approaches a solution \(\psi\) the Jacobians
+            \(J(\psi_k)\) becomes more and more ill-conditioned.
+          </div>
+          <div class="box" data-title="Relief">
+            \(\i\psi_k\) can serve as approximation to the eigenvector
+            corresponding to the eigenvalue moving to zero.<br/>
+
+            \(\lra\) Use \(\i\psi_k\) as deflation vector for the solution of
+              \[ J(\psi_k)\delta_{k+1} = -S(\psi_k). \]
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Experiments: Ginzburg&ndash;Landau equation</h2>
+        </hgroup>
+        <article>
+          <div class="box" data-title="Ginzburg&ndash;Landau equation">
+            \begin{align*}
+              (-\i\nabla - A)^2\psi - \psi(1-|\psi|^2) &=0\qquad\text{in}~\Omega\\
+              \text{and}\qquad n\cdot(-\i\nabla-A)\psi &=0\qquad\text{on}~\partial\Omega.
+            \end{align*}
+          </div>
+          <ul>
+              <figure style="float: right; width: 30%; padding-left: 10px;">
+                <img src="images/meissner_effect.jpg">
+                <figcaption class="small">
+                    Magnet levitating above a superconductor<br/>
+                    <a href="http://en.wikipedia.org/wiki/File:Meissner_effect_p1390048.jpg">
+                      (CC BY-SA 2.5, by Mai-Linh Doan)
+                    </a>
+                </figcaption>
+              </figure>
+            <li>Important instance of nonlinear Schrödinger equations.</li>
+            <li>
+              Models phenomenon of superconductivity: zero electrical
+              resistance and exclusion of magnetic fields when cooled down
+              heavily.</li>
+            <li>Above equation holds for extreme-type-II superconductors.</li>
+            <li>\(A\in H_{\R^r}^2(\Omega)\) is the magnetic vector
+              potential.</li>
+          </ul>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Small 2D experiment</h2>
+        </hgroup>
+        <article>
+          <div>
+            <figure class="left">
+              <img src="images/2d-solution-abs.png" />
+              <figcaption>Absolute value of computed 2D solution \(\psi\).</figcaption>
+            </figure>
+            <figure class="right">
+              <img src="images/2d-solution-arg.png" />
+              <figcaption>Argument of computed 2D solution \(\psi\).</figcaption>
+            </figure>
+          </div>
+          <h1 style="clear: both; text-align: center; margin-top: 2em;">
+            Number of unknowns: \(~6.500\).
+          </h1>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Small 2D experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/2d-newton-residuals.svg" />
+              <figcaption>Newton residual norms.</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Small 2D experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/2d-newton-vanilla.svg" />
+              <figcaption>MINRES residual norms <em>without</em> deflation<br
+                />(bright: early Newton steps, black: last Newton
+                steps).</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Small 2D experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/2d-newton-defl00-ix.svg" />
+              <figcaption>MINRES residual norms <em>with</em> deflation of
+                \(\i\psi_k\) <br />(bright: early Newton steps, black:
+                last Newton steps).</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Small 2D experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/2d-newton-defl11-ix.svg" />
+              <figcaption>MINRES residual norms <em>with</em> deflation of
+                \(\i\psi_k\) and 11 Ritz vectors (smallest Ritz value
+                magnitude)</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Small 2D experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/2d-newton-defl12.svg" />
+              <figcaption>MINRES residual norms <em>with</em> deflation of 12
+                Ritz vectors (smallest Ritz value magnitude)</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Small 2D experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/2d-newton-efficiency.svg" />
+            </figure>
+            <figcaption>Efficiency of deflation, \(T_p\) is <em>overall
+                time</em> for one Newton step with \(p\) deflation vectors
+            </figcaption>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>3D "L"-shape experiment</h2>
+        </hgroup>
+        <article>
+          <div>
+            <figure class="left">
+              <img src="images/3d-solution-abs.png" />
+              <figcaption>Absolute value of computed 3D solution \(\psi\).</figcaption>
+            </figure>
+            <figure class="right">
+              <img src="images/3d-solution-arg.png" />
+              <figcaption>Argument of computed 3D solution \(\psi\) and
+                isosurface of \(|\psi|=0.1\).</figcaption>
+            </figure>
+          </div>
+          <h1 style="clear: both; text-align: center; margin-top: 2em;">
+            Number of unknowns: \(~140.000\).
+          </h1>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>3D "L"-shape experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/3d-newton-residuals.svg" />
+              <figcaption>Newton residual norms.</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>3D "L"-shape experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/3d-newton-vanilla.svg" />
+              <figcaption>MINRES residual norms <em>without</em> deflation<br
+                />(bright: early Newton steps, black: last Newton
+                steps).</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>3D "L"-shape experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/3d-newton-defl00-ix.svg" />
+              <figcaption>MINRES residual norms <em>with</em> deflation of
+                \(\i\psi_k\) <br />(bright: early Newton steps, black:
+                last Newton steps).</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>3D "L"-shape experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/3d-newton-defl11-ix.svg" />
+              <figcaption>MINRES residual norms <em>with</em> deflation of
+                \(\i\psi_k\) and 11 Ritz vectors (smallest Ritz value
+                magnitude)</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>3D "L"-shape experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/3d-newton-defl12.svg" />
+              <figcaption>MINRES residual norms <em>with</em> deflation of 12
+                Ritz vectors (smallest Ritz value magnitude)</figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>3D "L"-shape experiment</h2>
+        </hgroup>
+        <article>
+            <figure>
+              <img src="images/3d-newton-efficiency.svg" />
+              <figcaption>Efficiency of deflation, \(T_p\) is <em>overall
+                  time</em> for one Newton step with \(p\) deflation vectors
+              </figcaption>
+            </figure>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>Deflation revisited</h2>
+        </hgroup>
+        <article>
+          <h1>Something's missing: automatic selection of Ritz vectors!</h1>
+          <p>
+            <div class="box box-warn" data-title="challenging problem">
+              How to determine which number and which choice of
+              deflation vectors performs best?
+            </div>
+          </p>
+          <p>What's so difficult?</p>
+          <p>
+            <ul>
+              <li>In general: convergence of Krylov subspace methods is
+                intricate.</li>
+              <li>A-priori bounds are misleading: actual (often superlinear)
+                behavior is not captured, e.g. with the famous CG
+                \(\kappa\)-bound.</li>
+              <li>Initial residual usually separated from matrix.</li>
+              <li>Delay and stagnation caused by round-off errors usually
+                omitted (especially for CG/MINRES).</li>
+              <li>High non-normality renders most bounds useless (GMRES).</li>
+            </ul>
+          </p>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>First steps with a new approach...</h2>
+        </hgroup>
+        <article>
+          <ul>
+            <li>Assume that an Arnoldi-relation is known for \(\vsK_n(A,v)\):
+              \begin{equation}
+                AV_n = V_{n+1} \underline{H}_n.
+                \label{arnoldi}
+              \end{equation}
+            </li>
+            <li>Compute Ritz vectors \(u_1,\ldots,u_n\in\vsK_n(A,v)\).</li>
+            <li>Pick \(p\leq n\) Ritz vectors \(Z=[u_{l_1},\ldots,u_{l_p}]\).</li>
+            <li><strong>Question:</strong> can we construct an Arnoldi relation
+              for \(K_n(P_ZA,P_Zv)\) from \eqref{arnoldi}?</li>
+            <li><strong>Answer:</strong> in general: no. ☹</li>
+            <li>But...</li>
+          </ul>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>First steps with a new approach...</h2>
+        </hgroup>
+        <article>
+          Arnoldi relations for \(\vsK_n(P_ZA+E_m,P_Zv)\), i.e. perturbed
+          Arnoldi relations, can be constructed for all
+          \(m=1,\ldots,n-p\):
+          \[ (P_ZA + E_m) W_m = W_{m+1} \underline{G}_m, \]
+          where \( W_m = [w_1,\ldots,w_m]\), \(w_1 = \frac{P_Zv}{\nrm{P_Zv}}\)
+          and:
+          <ul>
+            <li>no application of \(A\) or \(P_Z\) has to be performed!</li>
+            <li>\(W_m\) does not have to be explicitly computed.</li>
+            <li>\(\nrm{E_m}\) is available as a byproduct and
+              \[\nrm{E_1}\leq\nrm{E_2}\leq\ldots\leq\nrm{E_{n-p}}.\]</li>
+            <li>\(E_m\) is optimal w.r.t. the Krylov subspace \(\vsK_n(A,v)\).</li>
+            <li>Residual norms of Krylov subspace method applied to
+              \( (P_ZA+E_m)x = P_Zb \)
+              can be computed from \(G_m\) for \(n-p\) steps.</li>
+          </ul>
+        </article>
+      </slide>
+
+      <slide>
+        <hgroup>
+          <h2>First steps with a new approach...</h2>
+        </hgroup>
+        <article>
+          <figure>
+            <figcaption>
+              Numerical toy example computed with
+              <a href="https://github.com/andrenarchy/krypy">KryPy</a>:
+              \(N=100\), \(A=\diag(10^{-5},1,2,\ldots,N-1)\),
+              \(b=[1,\ldots,1]/\sqrt{N}\).
+            </figcaption>
+            <img src="images/convergence-perturbed.svg" />
+          </figure>
+        </article>
+      </slide>
+
+      <slide id="slide_bound">
+        <hgroup>
+          <h2>Conclusion</h2>
+        </hgroup>
+        <article>
+          <ul>
+            <li>Deflation is helpful in practice if
+              <ul>
+                <li>more than one linear algebraic system has to be solved.</li>
+                <li>eigenvector approximations can be obtained analytically
+                  (e.g. for nonlinear Schrödinger problems).</li>
+              </ul>
+            </li>
+            <li>Automatic selection of deflation vectors still missing</li>
+            <li>Perturbation approach:
+              <ul>
+                <li>Sets of deflation vectors can be "tested".</li>
+                <li>Looks promising.</li>
+                <li>Is still under investigation.</li>
+                <li>Perturbation theory / forward error analysis for
+                  Krylov subspaces is delicate. (I would like to give a
+                  separate talk on this alone ☺).</li>
+              </ul>
+            </li>
+          </ul>
+        </article>
+      </slide>
+
+      <slide id="slide_bound">
+        <hgroup>
+          <h2>References</h2>
+        </hgroup>
+        <article style="font-size:72%;">
+          <ul>
+            <li>
+              <strong>These slides can be watched online:</strong><br>
+              <a href="https://andrenarchy.github.io/talk-2013-ifip">https://andrenarchy.github.io/talk-2013-ifip</a>
+            </li>
+            <li>
+              <strong>Software used for experiments (free open source software):</strong>
+              <ul>
+                <li>
+                  G.,
+                  <em>KryPy: Krylov subspace methods package for Python.</em><br>
+                  <a href="https://github.com/andrenarchy/krypy">https://github.com/andrenarchy/krypy</a>
+                </li>
+                <li>
+                  G. and Schlömer,
+                  <em>PyNosh: Python framework for nonlinear Schrödinger equations.</em><br>
+                  <a href="https://bitbucket.org/nschloe/pynosh">https://bitbucket.org/nschloe/pynosh</a>
+                </li>
+              </ul>
+            </li>
+            <li>
+              Chapman and Saad,
+              <em>Deflated and augmented Krylov subspace techniques.</em>
+              1997. Numer. Linear Algebra Appl.
+            </li>
+            <li>
+              Erhel, Burrage and Pohl,
+              <em>Restarted GMRES preconditioned by deflation.</em>
+              1996. J. Comput. Appl. Math.
+            </li>
+            <li>
+              G., Gutknecht, Liesen and Nabben,
+              <em>A framework for deflated and augmented Krylov subspace methods.</em>
+              2013. SIMAX.
+              <a href="http://arxiv.org/abs/1206.1506">http://arxiv.org/abs/1206.1506</a>
+            </li>
+            <li>
+              G. and Schlömer,
+              <em>Preconditioned recycling Krylov subspace methods for self-adjoint problems.</em>
+              2013 (under revision).
+              <a href="http://arxiv.org/abs/1208.0264">http://arxiv.org/abs/1208.0264</a>
+            </li>
+            <li>
+              Sifuentes, Embree and Morgan,
+              <em>GMRES convergence for perturbed coefficient matrices,
+                with Application to Approximate Deflation Preconditioning.</em>
+              2013. SIMAX.
+            </li>
+            <li>
+              Simoncini and Szyld,
+              <em>On the Superlinear Convergence of MINRES.</em>
+              2013. In Num. Math. and Adv. Appl. 2011.
+            </li>
+            <li>
+              Wang, de Sturler and Paulino,
+              <em>Large-scale topology optimization using preconditioned Krylov subspace methods with recycling.</em>
+              2007. Internat. J. Numer. Methods Engrg.
+            </li>
+          </ul>
+        </article>
+      </slide>
+
+      <slide class="thank-you-slide segue nobackground">
+        <aside class="gdbar right"><img src="images/matheon-logo-color.svg"></aside>
+        <article class="flexbox vleft auto-fadein">
+          <h2>Thank you!</h2>
+          <p>Questions?</p>
+        </article>
+        <p class="auto-fadein" data-config-contact>
+          <!-- populated from slide_config.json -->
+        </p>
+      </slide>
+
+      <slide class="dark nobackground">
+        <article class="flexbox vcenter">
+          <div class="logoslide"><img src="images/matheon-w-text-white.svg"></div>
+          <div><img style="width: 150px; margin-top:100px;" src="images/html5rocks.png"></div>
+        </article>
+      </slide>
+
+      <slide class="backdrop"></slide>
+
+    </slides>
+
+    <!--[if IE]>
+    <script src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+    <![endif]-->
+  </body>
+</html>
